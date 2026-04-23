@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>贾湖骨笛 · 文物环境监测</title>
+    <style>
+        :root {
+            --bg: #f5f0eb;
+            --card-bg: #ffffff;
+            --text: #2c3e50;
+            --accent: #8b5a2b;
+            --light-text: #888;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: var(--bg);
+            font-family: "Microsoft YaHei","苹方", sans-serif;
+            padding: 15px;
+            line-height: 1.5;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .relic-img {
+            width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin: 10px 0;
+            background: #f4f1ea;
+        }
+        h2 { color: var(--accent); margin-bottom: 8px; }
+        .info-grid { display: grid; grid-template-columns: 1fr; gap: 5px; font-size: 15px; }
+        .info-item { display: flex; }
+        .info-label { color: var(--light-text); width: 65px; flex-shrink: 0; }
+        .desc { text-indent: 2em; margin-top: 10px; font-size: 14px; }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px,1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .sensor-card {
+            background: #f9f7f3;
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+        .sensor-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .sensor-unit { font-size: 0.8em; color: #888; }
+        .sensor-name { font-size: 0.9em; color: #666; margin-top: 4px; }
+
+        .snapshot-time {
+            color: #999;
+            font-size: 0.8em;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .error-msg {
+            background: #ffe0e0;
+            padding: 15px;
+            border-radius: 8px;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== 文物信息卡片 ========== -->
+    <div class="card" id="relic-card">
+        <!-- JS 动态填充 -->
+    </div>
+
+    <!-- ========== 环境数据快照卡片 ========== -->
+    <div class="card" id="data-card">
+        <h2>📸 触碰瞬间环境数据</h2>
+        <div class="sensor-grid" id="sensor-container">
+            <!-- JS 动态填充 -->
+        </div>
+        <div class="snapshot-time" id="timestamp"></div>
+    </div>
+
+    <script>
+        // ==================== 文物数据库 ====================
+        const relicsDB = {
+            "1": {
+                name: "贾湖骨笛",
+                img: "images/gudi.jpg",               // ← 改为你的图片路径
+                dynasty: "新石器时代 · 裴李岗文化",
+                unearthed: "河南舞阳贾湖遗址",
+                material: "丹顶鹤尺骨（翅骨）",
+                age: "距今约 7800~9000 年",
+                desc: "贾湖骨笛是世界上发现的最早的可吹奏乐器，由丹顶鹤的尺骨制成。笛身开有七个按孔，经测音可吹奏七声音阶，表明新石器时代先民已具备高超的数学和音乐知识。它的发现改写了对中国远古音乐文明的认识，被誉为“中华第一笛”。"
+            }
+            // 如果还有其他展品，可继续添加 "2":{...}
+        };
+
+        // ==================== 解析 URL 参数 ====================
+        function getUrlParams() {
+            const search = window.location.search.substring(1);
+            const params = {};
+            if (search) {
+                const pairs = search.split('&');
+                pairs.forEach(pair => {
+                    const [key, value] = pair.split('=');
+                    params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+                });
+            }
+            return params;
+        }
+
+        const params = getUrlParams();
+        const relicId = params['id'] || '1';
+
+        // ==================== 渲染文物信息 ====================
+        function renderRelic(id) {
+            const relic = relicsDB[id] || relicsDB['1'];
+            const container = document.getElementById('relic-card');
+            if (!relic) {
+                container.innerHTML = '<div class="error-msg">未找到该文物信息 (id=' + id + ')</div>';
+                return;
+            }
+            container.innerHTML = `
+                <h2>🎵 ${relic.name}</h2>
+                <img class="relic-img" src="${relic.img}" alt="${relic.name}"
+                     onerror="this.style.display='none'; this.insertAdjacentHTML('afterend','<p style=color:#aaa;text-align:center;padding:20px;>图片加载失败</p>')">
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-label">年 代</span> ${relic.dynasty}</div>
+                    <div class="info-item"><span class="info-label">距 今</span> ${relic.age}</div>
+                    <div class="info-item"><span class="info-label">出 土</span> ${relic.unearthed}</div>
+                    <div class="info-item"><span class="info-label">材 质</span> ${relic.material}</div>
+                </div>
+                <div class="desc">${relic.desc}</div>
+            `;
+        }
+
+        // ==================== 渲染传感器数据 ====================
+        function renderSensorData(p) {
+            const sensors = [
+                { key:'t', name:'温度',       unit:'°C',   icon:'🌡️', fallback:'--' },
+                { key:'h', name:'相对湿度',   unit:'%',    icon:'💧', fallback:'--' },
+                { key:'m', name:'甲烷浓度',   unit:'%',    icon:'🔥', fallback:'--' },
+                { key:'v', name:'TVOC',       unit:'ppb',  icon:'☣️', fallback:'--' },
+                { key:'l', name:'光照强度',   unit:'lx',   icon:'☀️', fallback:'--' },
+                { key:'x', name:'X轴加速度',  unit:'mg',   icon:'📐', fallback:'--' },
+                { key:'y', name:'Y轴加速度',  unit:'mg',   icon:'📐', fallback:'--' },
+                { key:'z', name:'Z轴加速度',  unit:'mg',   icon:'📐', fallback:'--' }
+            ];
+
+            const html = sensors.map(s => {
+                let value = (p[s.key] !== undefined) ? p[s.key] : s.fallback;
+                return `
+                    <div class="sensor-card">
+                        <div class="sensor-value">${value}</div>
+                        <div class="sensor-unit">${s.unit}</div>
+                        <div class="sensor-name">${s.icon} ${s.name}</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('sensor-container').innerHTML = html;
+
+            const now = new Date();
+            document.getElementById('timestamp').innerText =
+                `数据生成时间：${now.toLocaleString()}`;
+        }
+
+        // ==================== 启动 ====================
+        renderRelic(relicId);
+        renderSensorData(params);
+
+        if (window.location.search === '') {
+            document.getElementById('sensor-container').innerHTML =
+                '<div class="error-msg" style="color:#777;background:#f0f0f0;">⚠️ 请通过 NFC 触碰展品标签查看实时环境数据。</div>';
+            document.getElementById('timestamp').innerText = '';
+        }
+    </script>
+</body>
+</html>
